@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables - NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# Claude local settings - personal, not shared
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Editor
+.vscode/settings.json
