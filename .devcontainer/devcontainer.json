@@ -1,6 +1,6 @@
 {
   "name": "Web App Starter",
-  "image": "mcr.microsoft.com/devcontainers/node:20",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
 
   "customizations": {
     "vscode": {
