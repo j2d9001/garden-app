@@ -1,21 +1,64 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import NorthBlockVertical from './NorthBlockVertical';
 import NorthwestBlock from './NorthwestBlock';
 import SouthwestBlock from './SouthwestBlock';
 import SouthBlockVertical from './SouthBlockVertical';
+import { supabase } from '../supabaseClient';
 
 const TOTAL = 189;
 
+function rowToLocal(row) {
+  return {
+    assignee:  row.assignee  || '',
+    occupancy: row.occupancy_status,
+    payment:   row.payment_status,
+    flagged:   row.flagged   || false,
+    notes:     row.notes     || '',
+  };
+}
+
+function localToRow(id, data) {
+  return {
+    id,
+    assignee:         data.assignee || null,
+    occupancy_status: data.occupancy,
+    payment_status:   data.payment,
+    flagged:          data.flagged,
+    notes:            data.notes || null,
+  };
+}
+
 export default function GardenMap() {
   const [plotData, setPlotData] = useState({});
-  const [tooltip, setTooltip] = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+  const [tooltip,  setTooltip]  = useState(null);
 
-  function handleUpdate(id, data) {
+  useEffect(() => {
+    async function fetchPlots() {
+      const { data, error } = await supabase.from('plots').select('*');
+      if (error) {
+        setError(error.message);
+      } else {
+        const mapped = {};
+        for (const row of data) mapped[row.id] = rowToLocal(row);
+        setPlotData(mapped);
+      }
+      setLoading(false);
+    }
+    fetchPlots();
+  }, []);
+
+  async function handleUpdate(id, data) {
     setPlotData(prev => ({ ...prev, [id]: data }));
+    await supabase.from('plots').upsert(localToRow(id, data));
   }
 
-  function handleClear(id) {
+  async function handleClear(id) {
     setPlotData(prev => { const n = { ...prev }; delete n[id]; return n; });
+    await supabase.from('plots').upsert({
+      id, assignee: null, occupancy_status: 'available', payment_status: 'unpaid', flagged: false, notes: null,
+    });
   }
 
   function handleHover(id, x, y, assignee) {
@@ -25,6 +68,9 @@ export default function GardenMap() {
   function handleHoverEnd() {
     setTooltip(null);
   }
+
+  if (loading) return <div>Loading...</div>;
+  if (error)   return <div>Error: {error}</div>;
 
   const assigned  = Object.values(plotData).filter(d => d.occupancy === 'assigned').length;
   const flagged   = Object.values(plotData).filter(d => d.flagged === true).length;
